@@ -1,0 +1,9 @@
+Directory Scanner is intended to replace r_search in searcher.c so that you can pipe the results 
+of directoryscanner.c into searcher.c so a command will eventually be something like: 
+
+scandirectory -d /usr/bin | searcher
+
+But not sure how to make that happen yet.
+
+Priority #1 is to make sure that the sliding window of the search works correctly currently it's brute forcing 
+through the chunks of the files. 
