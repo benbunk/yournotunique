@@ -27,5 +27,10 @@ scandirectory -d /usr/bin | searcher
 But directory scanner is imcomplete and doesnt work so searcher.c still contains all of the recursive directory 
 scanning logic.
 
+02/2013 - As my knowledge of linux has grown I feel like directory scanner is a waste of time. The find program can 
+likely scan the directories and do the piping we require with many more options and flexibilities then I intended for 
+directory scanner. I also looked into grep for replacing searcher but the sliding window technique isn't supported so 
+maybe if this matures we could port it over as a patch to grep.
+
 Priority #1 is to make sure that the sliding window of the search works correctly currently it's brute forcing 
 through the chunks of the files. 
