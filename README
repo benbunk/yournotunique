@@ -1,9 +1,21 @@
+Purpose:
+I want to map the largest possible chunk of data (bits) in a source file to an identical chunk of bits in some other file on the same computer. THe reason for this is to prove that no file is unique, that it is actually a composition of patterns already found in other files. Ultimately, this data can be used for building a map of all the chunks in the source to their various destinations. Once the map is built it can be shared and the original source can be constructed by the user of the map without ever transfering the original source file. 
+
+Unknowns:
+1. It is still unknown if the map can be made smaller then the original source file. Because the mapping algorithm is supposed to use a sliding window for finding chunks it depends entirely on how many chunks it must find. For instance, if a single chunk of bits that represents 25% of the file can be mapped, than your map can potentially be 25% smaller then the original source file...but based on the initial results a chunk of that size is not realistic, but it is possible and hasn't yet been disproven entirely.
+
+2. It is also unknown what a map will actually look like, it's possible that the data format and the data required for a map point could easily be so verbose that it consumes more memory then the chunk of data that it points to.
+
+Usage:
+In order to use this program compile scanner.c and execute the resulting binary with no arguments to see help text.
+
+Notes:
 Directory Scanner is intended to replace r_search in searcher.c so that you can pipe the results 
 of directoryscanner.c into searcher.c so a command will eventually be something like: 
 
 scandirectory -d /usr/bin | searcher
 
-But not sure how to make that happen yet.
+But directory scanner is imcomplete and doesnt work so searcher.c still contains all of the recursive directory scanning logic.
 
 Priority #1 is to make sure that the sliding window of the search works correctly currently it's brute forcing 
 through the chunks of the files. 
