@@ -1,25 +1,34 @@
-//Purpose: Search a binary file for a specified hexadecimal set
-//Programmer: Benjamin Bunk
-//Input: File location, Hexadecimal set to search for
-//Output: Found (true/false), Beginning offset of where it is found
+/**
+ * Purpose: Search a binary file for a specified hexadecimal set
+ * Programmer: Benjamin Bunk
+ * Input: File location, Hexadecimal set to search for
+ * Output: Found (true/false), Beginning offset of where it is found
+ */
 
-//Headers
-#include <stdio.h> //cin, cout
-#include <string.h> //memcmp
-#include <dirent.h> //struct dirent, type DIR
+/**
+ * @todo check if we need malloc.
+ * @todo check what our security position is.
+ */
+
+// Headers
+#include <stdio.h> // cin, cout
+#include <string.h> // memcmp
+#include <dirent.h> // struct dirent, type DIR
 
 
-//Function Prototypes
-int Convert(char *, int);
+// Function Prototypes
+int convert(char *, int);
 int r_search(char *, unsigned char *, int);
 int search(char *, unsigned char *, int);
 
-//Begin main
+/**
+ * Main entry point.
+ */
 int main(int argc, char *argv[])
 {
-  //Process arguments
+  // Process arguments.
   if(argc < 3) {
-    //Program heading
+    // Program heading.
     printf("\n\n%s\n", "Searcher v0.1");
     printf("%s\n", "Author: Ben Bunk");
     printf("%s\n\n", "Purpose: Search a file for a hexadecimal string");
@@ -28,246 +37,217 @@ int main(int argc, char *argv[])
     printf("%s\n", "Example (Recursive Search): searcher r 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
   }
   else {
-    //Process arguments
-    
-    //printf("\n%s\n", "Begin processing");
-    
     char *filename = argv[1];
+    unsigned char input_buffer[argc-2];
+    int i;
+    i = 2;
 
-
-////////////////////////////////////////////////////CONVERT INPUT STRING//////////////////////////////////////////
-      //Convert input string to hex
-      unsigned char converted[argc-2];
-//Debugging
-      //printf("Size of argv - 2 (Used to create the converted array): %d\n", argc-2);
-      //printf("%s", "Converted input: ");
-      int i;
-      i = 2;
-      while(argv[i]) {
-        //debugging printf("Arg %d as string %s\n", i, argv[i]);
-        converted[i-2]=(unsigned char)Convert(argv[i], 16);
-        //debugging printf("Arg %d as hex %.2X\n", i, (unsigned int)converted[i-2]);
-        //printf("%.2X ", (unsigned int)converted[i - 2]);
-        i++;
-      }
-//printf("\n");
-      int numItems = i - 2;
-//Debugging
-      //printf("Number of items: %d\n", numItems);
-/////////////////////////////////////////////////////END CONVERT INPUT STRING////////////////////////////////
-
-////////////////////////////////////////////////////SWITCH based on filename/////////////////////////////////
-      if ( strcmp(filename, "r") == 0 ) {
-        r_search("/", converted, numItems);
-      } else {
-        //Call search
-        search(filename, converted, numItems);
-      }
-//////////////////////////////////////////////////END SWITCH BASED ON FILENAME///////////////////////////////
+    // Convert input hex string to a hex array.
+    while(argv[i]) {
+      input_buffer[i-2] = (unsigned char)convert(argv[i], 16);
+      i++;
+    }
+    
+    int numItems = i - 2;
+    
+    // Call the appropriate search method.
+    if ( strcmp(filename, "r") == 0 ) {
+      r_search("/", input_buffer, numItems);
+    } else {
+      search(filename, input_buffer, numItems);
+    }
   }
 
   printf("\n\n\n");
- return 0;
+  return 0;
 }
 
-int Convert(char *buffer, int cbase) {
-    int i;
-    int bin;
-    i = bin = 0;
+/**
+ * Convert a string hex characters into a char (hex) value.
+ */
+int convert(char *buffer, int cbase) {
+  int i;
+  int bin;
+  i = bin = 0;
+  
+  while(buffer[i]) {
+    buffer[i] -= 48;
     
-    while(buffer[i]) {
-        buffer[i] -= 48;
-        
-        if(buffer[i] > 16)
-            buffer[i] -= 7;
-        if(buffer[i] >= cbase)
-            buffer[i] -= 32;
-        if(buffer[i] >= cbase || buffer[i] < 0)
-            break;
-        
-        bin *= cbase;
-        bin += buffer[i];
-        i++;
-    }
+    if(buffer[i] > 16)
+        buffer[i] -= 7;
+    if(buffer[i] >= cbase)
+        buffer[i] -= 32;
+    if(buffer[i] >= cbase || buffer[i] < 0)
+        break;
     
-    return bin;
+    bin *= cbase;
+    bin += buffer[i];
+    i++;
+  }
+    
+  return bin;
 }
 
-int r_search(char *dstart, unsigned char *converted, int numItems) {
-//printf("===========\nEntering r_search\ndstart: %s\n", dstart);
-  int ret_val=0;
-  DIR *d = NULL;
+/**
+ * Run a search recursively against the speicifed folder instad of on a single file.
+ * @see search().
+ */
+int r_search(char *starting_directory, unsigned char *input_buffer, int numItems) {
+  int ret_val = 0;
+  DIR *directory = NULL;
   struct dirent *dir = NULL;
-//printf("Path=%s | ", path);
-  d = opendir(dstart);
-//printf("After opening: dstart = %s\n", dstart);
-  if(d) {
-//printf("d exists: dstart = %s\n", dstart);
+
+  // Load the directory and do some work.
+  directory = opendir(starting_directory);
+
+  // @todo - Switch this to a pesimistic if statement and avoid the 40 line wrapper.
+  if (directory) {
     // Get next dir
-    while ( (dir = readdir(d)) != NULL) {
+    while ((dir = readdir(directory)) != NULL) {
       //Setup the path variable
-      char path[strlen(dstart) + strlen("/") + strlen(dir->d_name)];
+      char path[strlen(starting_directory) + strlen("/") + strlen(dir->d_name)];
       strcpy(path, "");
-//printf("dstart before path: %s\n", dstart);
-      strcat(path, dstart);
-//printf("Path=%s | ", path);
-      if(strcmp(dstart, "/") != 0) {
+      strcat(path, starting_directory);
+      if(strcmp(starting_directory, "/") != 0) {
         strcat(path, "/");
       }
-//printf("Path=%s | ", path);
       strcat(path, dir->d_name);
-//printf("dstart after path: %s\n", dstart);
-//printf("path: %s\n", path);
 
-//printf("Inside loop: dstart = %s\n", dstart);
+      // @todo change this to a switch so it's more readable.
+      // Switch logic based on the type of file we loaded.
       // File
-      if(dir->d_type == DT_REG) {
-//printf("%s | File | %i\n", dir->d_name, dir->d_reclen);
+      if (dir->d_type == DT_REG) {
         //scan the file found
-        ret_val = search(path, converted, numItems);
+        ret_val = search(path, input_buffer, numItems);
         if (ret_val == 1) {
           break;
         }
+      }
       // Directory
-      } else if (dir->d_type == DT_DIR) { 
-//printf("%s | Directory | %i\n", dir->d_name, dir->d_reclen);
-        //Dont create runtime loops
+      else if (dir->d_type == DT_DIR) {
+        // Avoid a loop by skipping file handles that reference the current/previous directory.
         if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ) { // Fail on endless loops
-//printf("Directory is blacklisted: dstart = %s\n", dstart);
-        } else {  
-//printf("Directory is OK\n");
-printf("Calling r_search: dstart = %s | path = %s\n===========\n", dstart, path);
-          ret_val = r_search(path, converted, numItems);
-///////////////////////////////////////////////ENABLE FOR NORMAL OPERATION///////////////////////////////////
-//          if (ret_val == 1) { break; }
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//printf("Returned to r_search caller: dstart = %s | ret_val = %i\n", dstart, ret_val);
+          // No Op.
+        } 
+        else {
+          printf("Calling r_search: starting_directory = %s | path = %s\n===========\n", starting_directory, path);
+          ret_val = r_search(path, input_buffer, numItems);
+          
+          // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
+          // CURRENTLY WE ARE TESTING TO SEE HOW MANY MATCHES WE CAN FIND.
+          // if (ret_val == 1) { break; }
         }
+
       // Other possibilities but we don't care
       } else {
-//printf("%s | Unknown\n", dir->d_name);
-//printf("Type is blacklisted: dstart = %s\n", dstart);
+        // No Op.
       }
     }
-//printf("Exited loop: dstart = %s\n", dstart);
-    closedir(d);
-//printf("Closed d: dstart = %s\n", dstart);
+
+    // Close the file handle.
+    closedir(directory);
   }
- return(ret_val);
+
+  return ret_val;
 }
 
-int search(char *filename, unsigned char *converted, int numItems) {
-    FILE *file;
+/**
+ * Search for a hex pattern in a given file.
+ */
+int search(char *filename, unsigned char *input_buffer, int numItems) {
+  FILE *file;
+  int ret_val = 0;
+  
+  if ((file = fopen(filename, "rb")) == NULL) {
+    printf("Failed: %s\n", filename); 
+    // @todo - Why is this a 1?
+    return ret_val = 1;
+  }
+  else {
+    int i = 0;
+    size_t bytes_read;
+    unsigned char buffer[numItems];
+    int err = 0;
+    int j = 0;
+    int total_bytes_read = 0;
 
-//If filename == r then process recursively otherwise do it like normal
-  int ret_val=0;
-    if((file = fopen(filename, "rb")) == NULL) {
-      printf("Failed: %s\n", filename); 
-      return ret_val=1;
-    } 
-    else {
-//Debugging
-      printf("Searching: %s ", filename);
-      int i=0;
-      //Process the file for matches
-      size_t bytes_read;
-      unsigned char buffer[numItems];
-//Debugging
-      //printf("Size of converted after being populated: %d\n", sizeof(converted));
-      int err=0;
-      int j=0;
-      int total_bytes_read=0;
-      do {
-//Debugging
-        //printf("\n\nChunk Number: %d\n", j);
-        if(j>0) {
+    printf("Searching: %s ", filename);
 
-///////////////////////////////////////if numItems == numItemsCurrentPass || numItemsCurrentPass > lowerLimit
-///////////////////////////////////////Reset pointer back to beginning 
-///////////////////////////////////////Set numItemsCurrentPass 1 less than last time
-///////////////////////////////////////Search again
-///////////////////////////////////////else 
-///////////////////////////////////////reset back to beginning
-///////////////////////////////////////search original buffer based on original size for another occurence of first char
-///////////////////////////////////////Try it over again. 
-//Debugging
-	  //printf("Searching last run buffer for a match\n");
-          //Search the current array for another occurance of the first character
-          for(i=0; i<numItems; i++) {
-//Debugging
-            //printf("Match to find: %.2X == %.2X\n", converted[0], buffer[i]);         
-            if(converted[0] == buffer[i]) {
-              //If it exists seek from the beginning multiply the number of passes by the numItems to get total bytes read 
-              // so far. 
-	      // Than add the array index to set the pointer to the current location of the found byte.
-              total_bytes_read-=numItems;
-              total_bytes_read+=i+1;
-              fseek(
+    //Process the file for matches
+    do {
+      if (j > 0) {
+      // if numItems == numItemsCurrentPass || numItemsCurrentPass > lowerLimit
+      // Reset pointer back to beginning 
+      // Set numItemsCurrentPass 1 less than last time
+      // Search again
+      // else 
+      // reset back to beginning
+      // search original buffer based on original size for another occurence of first char
+      // Try it over again. 
 
-                file,
-                total_bytes_read, //Num bytes to rewind -- we are actually fast forwarding from the beginning, thus total
-                SEEK_SET//Where to start from (SEEK_SET, SEEK_CUR, SEEK_END)
-              );
-//Debugging
-	    //printf("Match found breaking: seek bytes == %d\n", total_bytes_read );
-              break;
-            }
+        //Search the current array for another occurance of the first character
+        for (i = 0; i < numItems; i++) {
+          if (input_buffer[0] == buffer[i]) {
+            // If it exists seek from the beginning multiply the number of passes by the numItems to get total bytes read.
+            // so far. 
+            // Than add the array index to set the pointer to the current location of the found byte.
+            total_bytes_read -= numItems;
+            total_bytes_read += i + 1;
+
+            fseek(
+              file,
+              total_bytes_read, // Num bytes to rewind -- we are actually fast forwarding from the beginning, thus total.
+              SEEK_SET          // Where to start from (SEEK_SET, SEEK_CUR, SEEK_END).
+            );
+
+            break;
           }
         }
-
-        bytes_read = fread(
-          buffer, //Fill this with the data 
-          1, //How big is an item
-          numItems, //How many items to read
-          file); // The file to read from
-	if(bytes_read < numItems) { //Was numItems
-          err=1;
-          break; //Breaking here eliminates the need for a condition in the do{}while();
-        }
-        j++;
-        total_bytes_read+=numItems;
-//Debugging
-        /*printf("Total Bytes Read: %d\n", total_bytes_read);
-        printf("Size of numItems: %d\n", numItems);
-        printf("Size of buffer after being populated: %d\n", sizeof(buffer));
-
-        printf("Bytes Read: %d\n", bytes_read);
-        printf("%s", "Printing file buffer contents: \n");        
-	for(i=0; i < bytes_read; i++) {
-          printf("%.2X ", buffer[i]);
-
-        }*/
       }
-      while(memcmp(converted, buffer, bytes_read) != 0);
-//Debugging      
-      //while( j < 7); 
 
+      bytes_read = fread(
+        buffer,   // Fill this with the data.
+        1,        // How big is an item.
+        numItems, // How many items to read.
+        file);    // The file to read from.
 
-      if(err==1){
-//Debugging
-        printf("\nEOF\n");
+      // Breaking here eliminates the need for a condition in the do{}while();
+      if(bytes_read < numItems) {
+        err = 1;
+        break;
       }
-      else {
-        ret_val = 1;
-        printf("\n%s\nSuccess:\nInput:  ", filename);
-        for(i=0; i < numItems; i++) {
-          printf("%.2X ", converted[i]);
-        }
-        printf("\nOutput: ");        
-	for(i=0; i < bytes_read; i++) {
-          printf("%.2X ", buffer[i]);
-        }
-      }
-     fclose(file);
-   }
 
-      //Print if converted and buffer are equivalent by memcompare and by the loop
-      /*printf("\nConverted is to Buffer: %d (0 is equal, +-N where n is the difference)", memcmp(converted, buffer, bytes_read));*/
- return ret_val;
+      j++;
+      total_bytes_read += numItems;
+    }
+    while(memcmp(input_buffer, buffer, bytes_read) != 0);
+
+    if (err == 1) {
+      // No Op.
+    }
+    else {
+      ret_val = 1;
+      
+      printf("\n%s\nSuccess:\nInput:  ", filename);
+      
+      for (i = 0; i < numItems; i++) {
+        printf("%.2X ", input_buffer[i]);
+      }
+      
+      printf("\nOutput: ");        
+
+      for(i = 0; i < bytes_read; i++) {
+        printf("%.2X ", buffer[i]);
+      }
+    }
+    
+    fclose(file);
+  }
+
+  //Print if input_buffer and buffer are equivalent by memcompare and by the loop
+  /*printf("\ninput_buffer is to Buffer: %d (0 is equal, +-N where n is the difference)", memcmp(input_buffer`, buffer, bytes_read));*/
+  return ret_val;
 }
-
-
-
 
 /*
 
