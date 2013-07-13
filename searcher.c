@@ -1,13 +1,8 @@
 /**
- * Purpose: Search a binary file for a specified hexadecimal set
+ * Purpose: Search a binary file for a specified hexadecimal pattern
  * Programmer: Benjamin Bunk
  * Input: File location, Hexadecimal set to search for
- * Output: Found (true/false), Beginning offset of where it is found
- */
-
-/**
- * @todo check if we need malloc.
- * @todo check what our security position is.
+ * Output: Beginning offset of where it is found, the filename, and a check of the data comparison.
  */
 
 // Headers
@@ -19,7 +14,6 @@
 
 
 // Function Prototypes
-// @todo - Switch the size int to size_t for passing array size around.
 int convert(char *, int);
 int findInBuffer(unsigned char *, size_t, unsigned char *, size_t);
 int search(const char *);
@@ -39,12 +33,13 @@ int main(int argc, char *argv[])
   // Process arguments.
   if(argc < 3) {
     // Program heading.
-    printf("\n\n%s\n", "Searcher v0.1");
+    printf("\n\n%s\n", "Searcher v0.2");
     printf("%s\n", "Author: Ben Bunk");
-    printf("%s\n\n", "Purpose: Search a file for a hexadecimal string");
-    printf("%s\n", "Format: searcher [filelocation+filename] hex data");
-    printf("%s\n", "Example: searcher 01 - All We Know.mp3 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
-    printf("%s\n", "Example (Recursive Search): searcher r 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
+    printf("%s\n\n", "Purpose: Search a file for a hexadecimal pattern.");
+    printf("%s\n", "Format: searcher [filename] [hex data]");
+    printf("%s\n", "Example: searcher AllWeKnow.mp3 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
+    printf("%s\n", "Example (Recursive Search from root (/)): searcher r 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
+    printf("%s\n", "Recursive is restricted to the first 20 levels of directory stucture.");
   }
   else {
     const char *filename = argv[1];
@@ -173,7 +168,7 @@ int search(const char *filename) {
   
   FILE *file;
   size_t bytes_read;
-  int total_bytes_read = 0; // @todo make this size_t
+  int total_bytes_read = 0;
   unsigned char buffer[buffer_length];
 
   printf("\nSearching: %s ", filename);
@@ -181,7 +176,6 @@ int search(const char *filename) {
   // Get the file handle.
   if ((file = fopen(filename, "rb")) == NULL) {
     printf("Failed: %s\n", filename); 
-    // @todo - Why is this a 1? ... probably a particular error code. No convention set though. ... Possibly for the recursive version.
     return ret_val = 1;
   }
 
@@ -210,7 +204,6 @@ int search(const char *filename) {
     }
 
     // Increment the Byte counter.
-    // @todo - This is sending a wrong total bytes if the EOF is reached. ... Try bytes_read instead.
     total_bytes_read += buffer_length;
   }
   while(memcmp(input_buffer, buffer, bytes_read) != 0);
@@ -220,7 +213,7 @@ int search(const char *filename) {
 
   // If Success.
   if (err != 1) {
-    ret_val = 1; // @todo this is the same code as a bad file handle.
+    ret_val = 2;
 
     printf("\nSuccess!\n  Input:  ");
     printHexBuffer(input_buffer, buffer_length);
@@ -235,9 +228,6 @@ int search(const char *filename) {
 /**
  * Run a search recursively against the speicifed folder instad of on a single file.
  * @see search().
- *
- * @todo - Handle file permissions.
- * @todo - Skip locked files.
  */
 int r_search(const char *path, const struct stat *stat, int flags, struct FTW *ftw) {
   //printf("\npath=%s, mode=%o\n", path, stat->st_mode);
@@ -247,11 +237,11 @@ int r_search(const char *path, const struct stat *stat, int flags, struct FTW *f
     ret_val = search(path);
   }
 
-  if (ret_val == 1) {
+  if (ret_val > 1) {
     printf("\n\n\n Number of matches: %d", ++g_hit_counter);
 
     // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
-    // return 1;
+    return ret_val;
   }
 
   return 0;
