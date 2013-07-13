@@ -48,13 +48,13 @@ int main(int argc, char *argv[])
       i++;
     }
     
-    int numItems = i - 2;
+    int buffer_length = i - 2;
     
     // Call the appropriate search method.
     if ( strcmp(filename, "r") == 0 ) {
-      r_search("/", input_buffer, numItems);
+      r_search("/", input_buffer, buffer_length);
     } else {
-      search(filename, input_buffer, numItems);
+      search(filename, input_buffer, buffer_length);
     }
   }
 
@@ -91,8 +91,10 @@ int convert(char *buffer, int cbase) {
 /**
  * Run a search recursively against the speicifed folder instad of on a single file.
  * @see search().
+ *
+ * @todo - File and directory handling is off...maybe im not doing it posix style?
  */
-int r_search(char *starting_directory, unsigned char *input_buffer, int numItems) {
+int r_search(char *starting_directory, unsigned char *input_buffer, int buffer_length) {
   int ret_val = 0;
   DIR *directory = NULL;
   struct dirent *dir = NULL;
@@ -118,7 +120,7 @@ int r_search(char *starting_directory, unsigned char *input_buffer, int numItems
       // File
       if (dir->d_type == DT_REG) {
         //scan the file found
-        ret_val = search(path, input_buffer, numItems);
+        ret_val = search(path, input_buffer, buffer_length);
         if (ret_val == 1) {
           break;
         }
@@ -131,7 +133,7 @@ int r_search(char *starting_directory, unsigned char *input_buffer, int numItems
         } 
         else {
           printf("Calling r_search: starting_directory = %s | path = %s\n===========\n", starting_directory, path);
-          ret_val = r_search(path, input_buffer, numItems);
+          ret_val = r_search(path, input_buffer, buffer_length);
           
           // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
           // CURRENTLY WE ARE TESTING TO SEE HOW MANY MATCHES WE CAN FIND.
@@ -154,7 +156,7 @@ int r_search(char *starting_directory, unsigned char *input_buffer, int numItems
 /**
  * Search for a hex pattern in a given file.
  */
-int search(char *filename, unsigned char *input_buffer, int numItems) {
+int search(char *filename, unsigned char *input_buffer, int buffer_length) {
   FILE *file;
   int ret_val = 0;
   
@@ -166,7 +168,7 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
   else {
     int i = 0;
     size_t bytes_read;
-    unsigned char buffer[numItems];
+    unsigned char buffer[buffer_length];
     int err = 0;
     int j = 0;
     int total_bytes_read = 0;
@@ -176,7 +178,7 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
     //Process the file for matches
     do {
       if (j > 0) {
-      // if numItems == numItemsCurrentPass || numItemsCurrentPass > lowerLimit
+      // if buffer_length == numItemsCurrentPass || numItemsCurrentPass > lowerLimit
       // Reset pointer back to beginning 
       // Set numItemsCurrentPass 1 less than last time
       // Search again
@@ -186,12 +188,12 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
       // Try it over again. 
 
         //Search the current array for another occurance of the first character
-        for (i = 0; i < numItems; i++) {
+        for (i = 0; i < buffer_length; i++) {
           if (input_buffer[0] == buffer[i]) {
-            // If it exists seek from the beginning multiply the number of passes by the numItems to get total bytes read.
+            // If it exists seek from the beginning multiply the number of passes by the buffer_length to get total bytes read.
             // so far. 
             // Than add the array index to set the pointer to the current location of the found byte.
-            total_bytes_read -= numItems;
+            total_bytes_read -= buffer_length;
             total_bytes_read += i + 1;
 
             fseek(
@@ -208,17 +210,17 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
       bytes_read = fread(
         buffer,   // Fill this with the data.
         1,        // How big is an item.
-        numItems, // How many items to read.
+        buffer_length, // How many items to read.
         file);    // The file to read from.
 
       // Breaking here eliminates the need for a condition in the do{}while();
-      if(bytes_read < numItems) {
+      if(bytes_read < buffer_length) {
         err = 1;
         break;
       }
 
       j++;
-      total_bytes_read += numItems;
+      total_bytes_read += buffer_length;
     }
     while(memcmp(input_buffer, buffer, bytes_read) != 0);
 
@@ -230,7 +232,7 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
       
       printf("\n%s\nSuccess:\nInput:  ", filename);
       
-      for (i = 0; i < numItems; i++) {
+      for (i = 0; i < buffer_length; i++) {
         printf("%.2X ", input_buffer[i]);
       }
       
@@ -239,13 +241,13 @@ int search(char *filename, unsigned char *input_buffer, int numItems) {
       for(i = 0; i < bytes_read; i++) {
         printf("%.2X ", buffer[i]);
       }
+
+      printf("\nPosition: %d", total_bytes_read);
     }
     
     fclose(file);
   }
 
-  //Print if input_buffer and buffer are equivalent by memcompare and by the loop
-  /*printf("\ninput_buffer is to Buffer: %d (0 is equal, +-N where n is the difference)", memcmp(input_buffer`, buffer, bytes_read));*/
   return ret_val;
 }
 
