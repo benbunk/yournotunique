@@ -142,6 +142,8 @@ int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
   int total_bytes_read = 0; // @todo make this size_t
   unsigned char buffer[buffer_length];
 
+  int found;
+
   printf("\nSearching: %s ", filename);
 
   // Get the file handle.
@@ -153,30 +155,19 @@ int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
 
   //Process the file for matches
   do {
-    // If we didn't find a match check the current buffer for a place to start searching.
-    // @todo - Make this it's own function.
-    // @todo - Change to search from first occurrence to the end of the buffer.
-      // @todo - Peak ahead could be a bit of a compromise.
-    // @todo - Check if memchr is sufficient for this. @see http://www.cplusplus.com/reference/cstring/memchr/
     if (total_bytes_read > 0) {
-
       //Search the current array for another occurance of the first character
       // @todo - bytes_read is probably better.
-      bool match = false;
-      for (i = 0; i < buffer_length; i++) {
-        if (input_buffer[0] == buffer[i]) {
-          total_bytes_read -= buffer_length;
-          total_bytes_read += i + 1;
+      if ( (found = findInBuffer(input_buffer, buffer_length, buffer, bytes_read)) != -1) {
+        total_bytes_read -= buffer_length;
+        total_bytes_read += found;
 
-          // Move the read head to the position we found.
-          fseek(
-            file,
-            total_bytes_read, // Num bytes to rewind -- we are actually fast forwarding from the beginning, thus total.
-            SEEK_SET          // Where to start from (SEEK_SET, SEEK_CUR, SEEK_END).
-          );
-
-          break;
-        }
+        // Move the read head to the position we found.
+        fseek(
+          file,
+          total_bytes_read, // Num bytes to rewind -- we are actually fast forwarding from the beginning, thus total.
+          SEEK_SET          // Where to start from (SEEK_SET, SEEK_CUR, SEEK_END).
+        );
       }
     }
 
