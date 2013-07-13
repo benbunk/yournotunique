@@ -11,21 +11,25 @@
  */
 
 // Headers
-#include <stdio.h> // printf
-#include <string.h> // memcmp
-#include <dirent.h> // struct dirent, type DIR
-#include <stdbool.h> // bool
+#include <stdio.h>    // printf
+#include <string.h>   // memcmp
+#include <dirent.h>   // struct dirent, type DIR
+#include <stdbool.h>  // bool
+#include <ftw.h>      // nftw
 
 
 // Function Prototypes
 // @todo - Switch the size int to size_t for passing array size around.
 int convert(char *, int);
 int findInBuffer(unsigned char *, size_t, unsigned char *, size_t);
-int search(char *, unsigned char *, size_t);
-int r_search(char *, unsigned char *, size_t);
+int search(const char *);
+int r_search(const char *, const struct stat*, int, struct FTW*);
 void printHexBuffer(unsigned char *, size_t);
 
 int g_hit_counter = 0;
+
+void *input;
+size_t input_length;
 
 /**
  * Main entry point.
@@ -43,24 +47,25 @@ int main(int argc, char *argv[])
     printf("%s\n", "Example (Recursive Search): searcher r 00 32 30 30 35 20 20 20 20 20 20 20 20 20 20");
   }
   else {
-    char *filename = argv[1];
+    const char *filename = argv[1];
     unsigned char input_buffer[argc-2];
-    int i;
-    i = 2;
 
     // Convert input hex string to a hex array.
+    int i = 2;
     while(argv[i]) {
       input_buffer[i-2] = (unsigned char)convert(argv[i], 16);
       i++;
     }
-    
-    size_t buffer_length = i - 2;
+
+    // Set the global reference to the input.
+    input = input_buffer;
+    input_length = i - 2;
     
     // Call the appropriate search method.
     if ( strcmp(filename, "r") == 0 ) {
-      r_search("/", input_buffer, buffer_length);
+      nftw("/", r_search, 20, 0);
     } else {
-      search(filename, input_buffer, buffer_length);
+      search(filename);
     }
   }
 
@@ -157,7 +162,10 @@ int findInBuffer(unsigned char *search_buffer, size_t search_len, unsigned char 
 /**
  * Search for a hex pattern in a given file.
  */
-int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
+int search(const char *filename) {
+  unsigned char *input_buffer = (unsigned char *)input;
+  size_t buffer_length = input_length;
+
   int i = 0;
   int err = 0;
   int ret_val = 0;
@@ -231,66 +239,22 @@ int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
  * @todo - Handle file permissions.
  * @todo - Skip locked files.
  */
-int r_search(char *starting_directory, unsigned char *input_buffer, size_t buffer_length) {
+int r_search(const char *path, const struct stat *stat, int flags, struct FTW *ftw) {
+  //printf("\npath=%s, mode=%o\n", path, stat->st_mode);
   int ret_val = 0;
-  DIR *directory = NULL;
-  struct dirent *dir = NULL;
 
-  // Load the directory and do some work.
-  directory = opendir(starting_directory);
-
-  // @todo - Switch this to a pesimistic if statement and avoid the 40 line wrapper.
-  if (directory) {
-    // Get next dir
-    while ((dir = readdir(directory)) != NULL) {
-      //Setup the path variable
-      char path[strlen(starting_directory) + strlen("/") + strlen(dir->d_name)];
-      strcpy(path, "");
-      strcat(path, starting_directory);
-      if(strcmp(starting_directory, "/") != 0) {
-        strcat(path, "/");
-      }
-      strcat(path, dir->d_name);
-
-      // @todo change this to a switch so it's more readable.
-      // Switch logic based on the type of file we loaded.
-      // File
-      if (dir->d_type == DT_REG) {
-        //scan the file found
-        ret_val = search(path, input_buffer, buffer_length);
-        if (ret_val == 1) {
-          break;
-        }
-      }
-      // Directory
-      else if (dir->d_type == DT_DIR) {
-        // Avoid a loop by skipping file handles that reference the current/previous directory.
-        if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ) { // Fail on endless loops
-          // No Op.
-        } 
-        else {
-          printf("\nCalling r_search: starting_directory = %s | path = %s\n===========\n", starting_directory, path);
-          ret_val = r_search(path, input_buffer, buffer_length);
-          
-          // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
-          // CURRENTLY WE ARE TESTING TO SEE HOW MANY MATCHES WE CAN FIND.
-          if (ret_val == 1) {
-            //break;
-            printf("\n\n\n Number of matches: %d", ++g_hit_counter);
-          }
-        }
-
-      // Other possibilities but we don't care
-      } else {
-        // No Op.
-      }
-    }
-
-    // Close the file handle.
-    closedir(directory);
+  if (flags == FTW_F) {
+    ret_val = search(path);
   }
 
-  return ret_val;
+  if (ret_val == 1) {
+    printf("\n\n\n Number of matches: %d", ++g_hit_counter);
+
+    // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
+    // return 1;
+  }
+
+  return 0;
 }
 
 /**
@@ -303,13 +267,3 @@ void printHexBuffer (unsigned char *buffer, size_t len) {
   }
   return;
 }
-
-/*
-
-int rewindReadHead (file, totalBytes, numBytesToRewind) {
-  
-  return file || null;
-}
-
-
-// */
