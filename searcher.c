@@ -95,34 +95,59 @@ int convert(char *buffer, int cbase) {
 }
 
 /**
- * Find a value from one buffer in the other.
+ * Find the starting position of one buffer inside of another.
+ * 
+ * Partial matches are allowed if it is consecutive from it's start
+ * to the end of the window buffer. Meaning that if the first 3 values
+ * of the search buffer are found in the last 3 spaces of the window buffer
+ * it is considered a match because as much of the search buffer was found
+ * as possible.
+ * However if the first 3 values of the search buffer are found in the last 4 
+ * positions of the window buffer but the 4 and final window buffer position 
+ * doesn't match the 4th value in the search buffer then it would not be 
+ * considered a match.
+ *
+ * Information from this function can be used to adjust the window size and 
+ * read head position so that a faster function like @see memcmp can be used. 
+ * 
+ * unsigned char *search_buffer
+ *   The buffer we are looking for.
+ * size_t search_len
+ *   Size of the search_buffer.
+ * unsigned char *window_buffer
+ *   The buffer we are looking in.
+ * size_t window_len
+ *   Size of the window_buffer.
+ * 
+ * Return int
+ *   -1 if search buffer isn't found at all, N position in the window buffer if it is found.
  */
 int findInBuffer(unsigned char *search_buffer, size_t search_len, unsigned char *window_buffer, size_t window_len) {
   int i;
-  int foundAt = 0;
-  int search = 0;
+  int found_position = 0;
+  int search_position = 0;
   bool found = false;
 
-  for (i = 0; i < window_len && search < search_len; i++) {
+  for (i = 0; i < window_len && search_position < search_len; i++) {
   // If we find the match
-    if (window_buffer[i] == search_buffer[search]) {
+    if (window_buffer[i] == search_buffer[search_position]) {
       if (found == false) {
         found = true;
-        foundAt = i;
+        found_position = i;
       }
-      search++;
+      search_position++;
     }
     else {
       if (found == true) {
         found = false;
-        search--;
-        i = foundAt;
+        search_position--;
+        i = found_position;
       }
     }
   }
 
   if (found == true) {
-    return foundAt;
+    return found_position;
   }
   else {
     return -1;
@@ -136,13 +161,12 @@ int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
   int i = 0;
   int err = 0;
   int ret_val = 0;
+  int found;
   
   FILE *file;
   size_t bytes_read;
   int total_bytes_read = 0; // @todo make this size_t
   unsigned char buffer[buffer_length];
-
-  int found;
 
   printf("\nSearching: %s ", filename);
 
@@ -155,30 +179,21 @@ int search(char *filename, unsigned char *input_buffer, size_t buffer_length) {
 
   //Process the file for matches
   do {
+    // Check if we have an occurence of our search embedded in the middle of this buffer.
     if (total_bytes_read > 0) {
-      //Search the current array for another occurance of the first character
-      // @todo - bytes_read is probably better.
-      if ( (found = findInBuffer(input_buffer, buffer_length, buffer, bytes_read)) != -1) {
+      found = findInBuffer(input_buffer, buffer_length, buffer, bytes_read);
+      if ( found != -1) {
         total_bytes_read -= buffer_length;
         total_bytes_read += found;
 
         // Move the read head to the position we found.
-        fseek(
-          file,
-          total_bytes_read, // Num bytes to rewind -- we are actually fast forwarding from the beginning, thus total.
-          SEEK_SET          // Where to start from (SEEK_SET, SEEK_CUR, SEEK_END).
-        );
+        // We are actually fast forwarding from the beginning, thus total bytes here.
+        fseek(file, total_bytes_read, SEEK_SET);
       }
     }
 
-    // Pull in a new buffer based on where the read head is.
-    // @see fseek().
-    bytes_read = fread(
-      buffer,        // Fill this with the data being read.
-      1,             // How big is an item.
-      buffer_length, // How many items to read.
-      file           // The file to read from.
-    );
+    // Pull in a new buffer based on where the read head is. @see fseek().
+    bytes_read = fread(buffer, 1, buffer_length, file);
 
     // Break at the end of the file.
     if(bytes_read < buffer_length) {
