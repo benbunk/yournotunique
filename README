@@ -9,6 +9,18 @@ Unknowns:
 Usage:
 In order to use this program compile scanner.c and execute the resulting binary with no arguments to see help text.
 
+Sliding Window:
+The sliding window works in 2 steps.
+1. Set the minimum chunk or buffer size equal to the size of the text being searched for.
+2. Starting at the first byte grab the first matching chunk size from the searched file.
+3. Compare the two buffers to see if they're identical.
+4. *Check the current file buffer for the first occurrence of the first byte from the search buffer.
+5. *If the byte exists change the read head to that position and grab a new buffer. Go back to step 3.
+5b. *If the byte doesn't exist move the read head to the end of the buffer and go to step 2.
+6. If there is a match finish.
+
+*Not implemented.
+
 Notes:
 Directory Scanner is intended to replace r_search in searcher.c so that you can pipe the results of directoryscanner.c into searcher.c so a command will eventually be something like: 
 
