@@ -10,14 +10,19 @@
 #include <string.h>   // memcmp
 #include <dirent.h>   // struct dirent, type DIR
 #include <stdbool.h>  // bool
-#include <ftw.h>      // nftw
+#include <stdlib.h>   // exit
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <err.h>
+#include <fts.h>
 
 
 // Function Prototypes
 int convert(char *, int);
 int findInBuffer(unsigned char *, size_t, unsigned char *, size_t);
 int search(const char *);
-int r_search(const char *, const struct stat*, int, struct FTW*);
+int r_search();
 void printHexBuffer(unsigned char *, size_t);
 
 int g_hit_counter = 0;
@@ -55,10 +60,11 @@ int main(int argc, char *argv[])
     // Set the global reference to the input.
     input = input_buffer;
     input_length = i - 2;
-    
+
     // Call the appropriate search method.
-    if ( strcmp(filename, "r") == 0 ) {
-      nftw("/", r_search, 20, 0);
+    if (strcmp(filename, "r") == 0) {
+      // @todo pass in a path at some point.
+      r_search();
     } else {
       search(filename);
     }
@@ -171,7 +177,7 @@ int search(const char *filename) {
   int total_bytes_read = 0;
   unsigned char buffer[buffer_length];
 
-  printf("\nSearching: %s ", filename);
+  //printf("\nSearching: %s ", filename);
 
   // Get the file handle.
   if ((file = fopen(filename, "rb")) == NULL) {
@@ -229,22 +235,41 @@ int search(const char *filename) {
  * Run a search recursively against the speicifed folder instad of on a single file.
  * @see search().
  */
-int r_search(const char *path, const struct stat *stat, int flags, struct FTW *ftw) {
-  //printf("\npath=%s, mode=%o\n", path, stat->st_mode);
+int r_search(char const *path) {
   int ret_val = 0;
+  int i = 1;
 
-  if (flags == FTW_F) {
-    ret_val = search(path);
+  char * const filepaths[] = { "/", NULL };
+  FTS *ftsp;
+  FTSENT *p, *chp;
+  int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
+  int rval = 0;
+
+  if ((ftsp = fts_open(filepaths, fts_options, NULL)) == NULL) {
+    warn("fts_open");
+    return -1;
   }
-
-  if (ret_val > 1) {
-    printf("\n\n\n Number of matches: %d", ++g_hit_counter);
-
-    // ENABLE THIS TO STOP ON THE FIRST FOUND MATCH.
-    return ret_val;
+  chp = fts_children(ftsp, 0);
+  if (chp == NULL) {
+    return 0;  /* no files to traverse */
   }
+  while ((p = fts_read(ftsp)) != NULL) {
+    switch (p->fts_info) {
+      case FTS_F:
+        ret_val = search(p->fts_path);
+        break;
+      default:
+        break;
+    }
 
-  return 0;
+    if (ret_val > 1) {
+      printf("\n\n\n Number of matches: %d", ++g_hit_counter);
+      break;
+    }
+  }
+  fts_close(ftsp);
+
+  return ret_val;
 }
 
 /**
