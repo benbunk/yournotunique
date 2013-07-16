@@ -181,7 +181,7 @@ int search(const char *filename) {
 
   // Get the file handle.
   if ((file = fopen(filename, "rb")) == NULL) {
-    printf("Failed: %s\n", filename); 
+    //printf("Failed: %s\n", filename); 
     return ret_val = 1;
   }
 
@@ -221,11 +221,11 @@ int search(const char *filename) {
   if (err != 1) {
     ret_val = 2;
 
-    printf("\nSuccess!\n  Input:  ");
+    /*printf("\nSuccess!\n  Input:  ");
     printHexBuffer(input_buffer, buffer_length);
     printf("\n  Output: ");
     printHexBuffer(buffer, bytes_read);
-    printf("\n  Position: %d", total_bytes_read);
+    printf("\n  Position: %d", total_bytes_read);*/
   }
 
   return ret_val;
@@ -263,11 +263,13 @@ int r_search(char const *path) {
     }
 
     if (ret_val > 1) {
-      printf("\n\n\n Number of matches: %d", ++g_hit_counter);
-      break;
+      g_hit_counter++;
+      //break; // Stop on a match.
     }
   }
   fts_close(ftsp);
+
+  printf("\n\n\n Matches: %d", g_hit_counter);
 
   return ret_val;
 }
