@@ -20,7 +20,7 @@
 
 // Function Prototypes
 int convert(char *, int);
-int findInBuffer(unsigned char *, size_t, unsigned char *, size_t);
+int find_in_buffer(unsigned char *, size_t, unsigned char *, size_t);
 int search(const char *);
 int r_search();
 void printHexBuffer(unsigned char *, size_t);
@@ -128,7 +128,7 @@ int convert(char *buffer, int cbase) {
  * Return int
  *   -1 if search buffer isn't found at all, N position in the window buffer if it is found.
  */
-int findInBuffer(unsigned char *search_buffer, size_t search_len, unsigned char *window_buffer, size_t window_len) {
+int find_in_buffer(unsigned char *search_buffer, size_t search_len, unsigned char *window_buffer, size_t window_len) {
   int i;
   int found_position = 0;
   int search_position = 0;
@@ -189,7 +189,7 @@ int search(const char *filename) {
   do {
     // Check if we have an occurence of our search embedded in the middle of this buffer.
     if (total_bytes_read > 0) {
-      found = findInBuffer(input_buffer, buffer_length, buffer, bytes_read);
+      found = find_in_buffer(input_buffer, buffer_length, buffer, bytes_read);
       if ( found != -1) {
         total_bytes_read -= buffer_length;
         total_bytes_read += found;
@@ -232,14 +232,22 @@ int search(const char *filename) {
 }
 
 /**
- * Run a search recursively against the speicifed folder instad of on a single file.
- * @see search().
+ * Recursively trace a file structure specified in path.
+ *
+ * This function only contains the directory scanning logic and any
+ * aggreagate statistics at the file level.
+ * @see search() for information on byte level matching.
+ *
+ * @see fts()
  */
 int r_search(char const *path) {
   int ret_val = 0;
   int i = 1;
 
-  char * const filepaths[] = { "/", NULL };
+  char * const filepaths[] = { 
+    "/", // Default directory.
+    NULL 
+  };
   FTS *ftsp;
   FTSENT *p, *chp;
   int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;

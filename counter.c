@@ -1,6 +1,9 @@
 #include <stdio.h>
 
-int reset_buffer(int *buffer, int current_rewind_position, int current_buffer_position, int max_buffer_position_size) {
+// @note - Given a particular buffer and a set of limits you can always determine the next buffer
+// @todo - Create a next buffer method that only does one iteration.
+
+int r_reset_buffer(int *buffer, int current_rewind_position, int current_buffer_position, int max_buffer_position_size) {
   int i = 0;
 
   if (current_rewind_position >= 0) {    
@@ -14,7 +17,7 @@ int reset_buffer(int *buffer, int current_rewind_position, int current_buffer_po
       return 0;
     }
     else if (current_rewind_position - 1 >= 0) {
-      return reset_buffer(buffer, current_rewind_position - 1, current_buffer_position, max_buffer_position_size);
+      return r_reset_buffer(buffer, current_rewind_position - 1, current_buffer_position, max_buffer_position_size);
     }
     else {
     }
@@ -45,14 +48,14 @@ int main(void) {
       }
 
       printf("%2x\n", buffer[current_buffer_position]);
-      
+
       // if current is max we need to recursively move back
       if(j == max_buffer_position_size) {
-        if (reset_buffer(buffer, current_rewind_position, current_buffer_position, max_buffer_position_size) > 0) {
+        if (r_reset_buffer(buffer, current_rewind_position, current_buffer_position, max_buffer_position_size) > 0) {
           break;
         }
         else {
-          j = 0;  
+          j = 0;
         }
       }
     }
