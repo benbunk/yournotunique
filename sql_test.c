@@ -3,10 +3,33 @@
 // sudo ln -s /usr/local/mysql/lib/libmysqlclient.18.dylib /usr/lib/libmysqlclient.18.dylib
 
 // Compile - 
-//gcc sql_test.c -stf=c99 -I/usr/local/mysql-5.5.29-osx10.6-x86_64/include/ `mysql_config --cflags --libs`
+//gcc sql_test.c -std=c99 -I/usr/local/mysql-5.5.29-osx10.6-x86_64/include/ `mysql_config --cflags --libs`
 
 // http://zetcode.com/db/mysqlc/
 
+/*
+CREATE TABLE `binary_stats` (
+  `Id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `pattern` varchar(255) DEFAULT NULL,
+  `OS` varchar(255) NOT NULL DEFAULT '',
+  `total_matches` int(11) NOT NULL,
+  `files_scanned` int(11) NOT NULL,
+  `num_files_with_match` int(11) NOT NULL,
+  `file_most_matches` text NOT NULL,
+  `time_start` int(11) NOT NULL,
+  `time_first_match` int(11) NOT NULL,
+  `time_last_match` int(11) NOT NULL,
+  `time_end` int(11) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `pattern` (`pattern`,`OS`),
+  KEY `total_matches` (`total_matches`),
+  KEY `files_scanned` (`files_scanned`),
+  KEY `num_files_with_match` (`num_files_with_match`),
+  KEY `time_first_match` (`time_first_match`),
+  KEY `time_last_match` (`time_last_match`),
+  KEY `total_matches_2` (`total_matches`,`pattern`,`OS`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+*/
 
 #include <my_global.h>
 #include <mysql.h>
