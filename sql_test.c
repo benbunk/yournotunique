@@ -31,6 +31,11 @@ CREATE TABLE `binary_stats` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 */
 
+//threads can share one mysql handle
+// forks have no shared memory
+// http://www.geekride.com/fork-forking-vs-threading-thread-linux-kernel/
+
+
 #include <my_global.h>
 #include <mysql.h>
 
