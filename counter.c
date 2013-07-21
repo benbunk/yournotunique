@@ -1,74 +1,37 @@
 #include <stdio.h>
 
-// @note - Given a particular buffer and a set of limits you can always determine the next buffer
-// @todo - Create a next buffer method that only does one iteration.
+void next_buffer(int buffer[], int *buffer_current, int buffer_pos_max) {
+	int i;
+	for (i = *buffer_current; i >= 0; i--) {
+		if (buffer[i] < buffer_pos_max) {
+			buffer[i]++;
+			break;
+		}
+		if (buffer[i] == buffer_pos_max) {
+			buffer[i] = 0;
+		}
 
-int r_reset_buffer(int *buffer, int current_rewind_position, int current_buffer_position, int max_buffer_position_size) {
-  int i = 0;
-
-  if (current_rewind_position >= 0) {    
-    if (buffer[current_rewind_position] < max_buffer_position_size) {
-      buffer[current_rewind_position]++;
-
-      for (i = current_rewind_position + 1; i <= current_buffer_position; i++) {
-        buffer[i] = 0;
-      }
-
-      return 0;
-    }
-    else if (current_rewind_position - 1 >= 0) {
-      return r_reset_buffer(buffer, current_rewind_position - 1, current_buffer_position, max_buffer_position_size);
-    }
-    else {
-    }
-  }
-  
-  return 1;
+		if (i == 0 && buffer[i] == 0) {
+			(*buffer_current)++;
+		}
+	}
 }
 
-int main(void) {
+int main (void) {
+	int buffer_size = 6;
+	int buffer_pos_max = 255;
 
-  int buffer[6] = { 0 };
-  int current_buffer_position = 0;
-  int current_rewind_position = -1;
+	int buffer[buffer_size]; int i; for (i = 0; i < buffer_size; i++) { buffer[i] = 0; }
+	int buffer_current = 0;
 
-  int max_buffer_positions = 6;
-  int max_buffer_position_size = 255;
+	int j;
 
-  // @todo - min buffer position size
-  // @todo - min buffer position size
- 
-  int i, j, k, l;
-  for (i = 0; i < max_buffer_positions; i++) {
-    for (j = 0; j <= max_buffer_position_size; j++) {
-      buffer[current_buffer_position] = j;
-
-      for (k = 0; k < current_buffer_position; k++) {
-        printf("%2x ", buffer[k]);  
-      }
-
-      printf("%2x\n", buffer[current_buffer_position]);
-
-      // if current is max we need to recursively move back
-      if(j == max_buffer_position_size) {
-        if (r_reset_buffer(buffer, current_rewind_position, current_buffer_position, max_buffer_position_size) > 0) {
-          break;
-        }
-        else {
-          j = 0;
-        }
-      }
-    }
-
-    // Zero the buffer before the next run.
-    for (l = 0; l <= current_buffer_position; l++) {
-      buffer[l] = 0;
-    }
-
-    // Reset position counters.
-    current_buffer_position++;
-    current_rewind_position = current_buffer_position - 1;
-  }
-
-  return 0;
+	printf("Starting\n buffer_size: %d, buffer_current: %d\n", buffer_size, buffer_current);
+	while (buffer_current <= buffer_size) {
+		printf("  buffer_size: %d, buffer_current: %d\n", buffer_size, buffer_current);
+		for (j = 0; j <= buffer_current; j++) {
+			printf("%2x ", buffer[j]);
+		}
+		next_buffer(buffer, &buffer_current, buffer_pos_max);
+	}
 }
