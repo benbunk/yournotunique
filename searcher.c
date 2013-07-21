@@ -22,7 +22,7 @@
 int convert(char *, int);
 int find_in_buffer(unsigned char *, size_t, unsigned char *, size_t);
 int search(const char *);
-int r_search();
+int r_search(void *);
 void printHexBuffer(unsigned char *, size_t);
 
 int g_hit_counter = 0;
@@ -64,7 +64,15 @@ int main(int argc, char *argv[])
     // Call the appropriate search method.
     if (strcmp(filename, "r") == 0) {
       // @todo pass in a path at some point.
-      r_search();
+      pthread_t pth;  // this is our thread identifier
+
+      int j;
+      for (j = 1; j < 4; j++) {
+        pthread_create(&pth,NULL,r_search, &j);
+      }
+
+      pthread_join(pth,NULL);
+
     } else {
       search(filename);
     }
@@ -91,7 +99,7 @@ int convert(char *buffer, int cbase) {
         buffer[i] -= 32;
     if(buffer[i] >= cbase || buffer[i] < 0)
         break;
-    
+
     bin *= cbase;
     bin += buffer[i];
     i++;
@@ -171,7 +179,7 @@ int search(const char *filename) {
   int err = 0;
   int ret_val = 0;
   int found;
-  
+
   FILE *file;
   size_t bytes_read;
   int total_bytes_read = 0;
@@ -240,7 +248,11 @@ int search(const char *filename) {
  *
  * @see fts()
  */
-int r_search(char const *path) {
+int r_search(void *arg) {
+    int* str = (int *)arg;
+    int local = *str;
+    str=(int *)arg;
+
   int ret_val = 0;
   int i = 1;
 
@@ -264,6 +276,7 @@ int r_search(char const *path) {
   while ((p = fts_read(ftsp)) != NULL) {
     switch (p->fts_info) {
       case FTS_F:
+        printf("Thread ID: %d, File: %s\n", local, p->fts_path);
         ret_val = search(p->fts_path);
         break;
       default:

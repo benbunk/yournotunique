@@ -5,6 +5,8 @@
 // http://stackoverflow.com/questions/5641483/thread-grabs-other-threads-ipc-message-from-queue-linux
 // http://www.cs.cf.ac.uk/Dave/C/node25.html
 
+// gcc pthread.c -o pthread -pthread
+
 /* This is our thread function.  It is like main(), but for a thread*/
 void *threadFunc(void *arg)
 {
