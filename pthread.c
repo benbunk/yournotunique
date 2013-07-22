@@ -26,25 +26,21 @@ void *threadFunc(void *arg)
     return NULL;
 }
 
+pthread_t pth[4];  // this is our thread identifier
+
 int main(void)
 {
-    pthread_t pth;  // this is our thread identifier
     int i = 0;
 
     int j;
-    for (j = 1; j < 4; j++) {
-        pthread_create(&pth,NULL,threadFunc, &j);
-    }
-    
-    while(i < 110000)
-    {
-        usleep(1);
-        printf("main is running...\n");
-        ++i;
+    for (j = 0; j < 4; j++) {
+        pthread_create(&pth[j],NULL,threadFunc, &j);
     }
 
     printf("main waiting for thread to terminate...\n");
-    pthread_join(pth,NULL);
+    for (j = 0; j < 4; j++) {
+        pthread_join(pth[j],NULL);
+    }
 
     return 0;
 }

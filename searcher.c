@@ -14,21 +14,29 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <err.h>
-#include <fts.h>
+#include <err.h>      // perror
+#include <fts.h>      // File Tree
+
+#include <pthread.h> // pthread create, destroy, mutext.
 
 
 // Function Prototypes
 int convert(char *, int);
-int find_in_buffer(unsigned char *, size_t, unsigned char *, size_t);
-int search(const char *);
-int r_search(void *);
-void printHexBuffer(unsigned char *, size_t);
+int find_in_buffer(unsigned char *, int, unsigned char *, size_t);
+int search(const char *, unsigned char *, int);
+void *r_search(void *);
+void next_buffer(unsigned char *, int *, int);
+void copy_buffer(unsigned char *, unsigned char *, int);
+void printHexBuffer(unsigned char *, int);
 
-int g_hit_counter = 0;
+#define NUMTHRDS 10
+pthread_mutex_t mutex;
+pthread_t pth[NUMTHRDS];  // this is our thread identifier
 
-void *input;
-size_t input_length;
+#define buffer_size 5
+int buffer_pos_max = 255;
+int buffer_current = 0;
+unsigned char buffer[buffer_size];
 
 /**
  * Main entry point.
@@ -58,27 +66,31 @@ int main(int argc, char *argv[])
     }
 
     // Set the global reference to the input.
-    input = input_buffer;
-    input_length = i - 2;
+    unsigned char *input = input_buffer;
+    size_t input_length = i - 2;
 
     // Call the appropriate search method.
     if (strcmp(filename, "r") == 0) {
       // @todo pass in a path at some point.
-      pthread_t pth;  // this is our thread identifier
+      printf("Initiating Mutex\n");
+      pthread_mutex_init(&mutex, NULL);
 
-      int j;
-      for (j = 1; j < 4; j++) {
-        pthread_create(&pth,NULL,r_search, &j);
+      int j, c;
+      for (j = 0; j < NUMTHRDS; j++) {
+        printf("Starting Thread: %d\n", j);
+        pthread_create(&pth[j],NULL,r_search, &j);
       }
 
-      pthread_join(pth,NULL);
-
+      // Wait for threads to finish.
+      for (j = 0; j < 4; j++) {
+        pthread_join(pth[j],NULL);
+      }
     } else {
-      search(filename);
+      search(filename, input, input_length);
     }
   }
 
-  printf("\n\n\n");
+  pthread_exit(NULL);
   return 0;
 }
 
@@ -136,7 +148,7 @@ int convert(char *buffer, int cbase) {
  * Return int
  *   -1 if search buffer isn't found at all, N position in the window buffer if it is found.
  */
-int find_in_buffer(unsigned char *search_buffer, size_t search_len, unsigned char *window_buffer, size_t window_len) {
+int find_in_buffer(unsigned char *search_buffer, int search_len, unsigned char *window_buffer, size_t window_len) {
   int i;
   int found_position = 0;
   int search_position = 0;
@@ -171,9 +183,9 @@ int find_in_buffer(unsigned char *search_buffer, size_t search_len, unsigned cha
 /**
  * Search for a hex pattern in a given file.
  */
-int search(const char *filename) {
-  unsigned char *input_buffer = (unsigned char *)input;
-  size_t buffer_length = input_length;
+int search(const char *filename, unsigned char *input_buffer, int buffer_length) {
+//  unsigned char *input_buffer = (unsigned char *)input;
+//  size_t buffer_length = input_length;
 
   int i = 0;
   int err = 0;
@@ -184,6 +196,7 @@ int search(const char *filename) {
   size_t bytes_read;
   int total_bytes_read = 0;
   unsigned char buffer[buffer_length];
+  //printHexBuffer(input_buffer, buffer_length);
 
   //printf("\nSearching: %s ", filename);
 
@@ -248,59 +261,107 @@ int search(const char *filename) {
  *
  * @see fts()
  */
-int r_search(void *arg) {
-    int* str = (int *)arg;
-    int local = *str;
-    str=(int *)arg;
+// Next_buffer support stuff
+void *r_search(void *arg) {
+
+  int* str = (int *)arg;
+  int local = *str;
+
+  printf("Thread %d: Started.\n", local);
 
   int ret_val = 0;
-  int i = 1;
-
   char * const filepaths[] = { 
-    "/", // Default directory.
-    NULL 
+      "/", // Default directory.
+      NULL 
   };
   FTS *ftsp;
   FTSENT *p, *chp;
   int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
-  int rval = 0;
 
-  if ((ftsp = fts_open(filepaths, fts_options, NULL)) == NULL) {
-    warn("fts_open");
-    return -1;
-  }
-  chp = fts_children(ftsp, 0);
-  if (chp == NULL) {
-    return 0;  /* no files to traverse */
-  }
-  while ((p = fts_read(ftsp)) != NULL) {
-    switch (p->fts_info) {
-      case FTS_F:
-        printf("Thread ID: %d, File: %s\n", local, p->fts_path);
-        ret_val = search(p->fts_path);
-        break;
-      default:
-        break;
+  int i;
+
+  // @todo - Buffer current is not thread safe, copy it to buffer_current_local, or do work inside mutex.
+  while (buffer_current <= buffer_size) {
+    pthread_mutex_lock(&mutex);
+      unsigned char local_buffer[buffer_current];
+      int local_buffer_current = buffer_current;
+
+      next_buffer(buffer, &buffer_current, buffer_pos_max);
+      copy_buffer(buffer, local_buffer, buffer_current);
+      
+      printf("Thread %d: buffer=", local);
+      printHexBuffer(buffer, buffer_current);
+      printf("\nThread %d: local_buffer=", local);
+      printHexBuffer(local_buffer, local_buffer_current);
+      printf("\n");
+    pthread_mutex_unlock(&mutex);
+
+    if ((ftsp = fts_open(filepaths, fts_options, NULL)) == NULL) {
+      warn("fts_open");
+      return ;
+    }
+    chp = fts_children(ftsp, 0);
+    if (chp == NULL) {
+      return 0;  // no files to traverse
     }
 
-    if (ret_val > 1) {
-      g_hit_counter++;
-      //break; // Stop on a match.
+    while ((p = fts_read(ftsp)) != NULL) {
+      switch (p->fts_info) {
+        case FTS_F:
+          //printf("Thread %d: File=%s\n", local, p->fts_path);
+          ret_val = search(p->fts_path, local_buffer, local_buffer_current);
+          break;
+        default:
+          break;
+      }
+
+      if (ret_val > 1) {
+        //g_hit_counter++;
+        //break; // Stop on a match.
+      }
+    }
+    fts_close(ftsp);
+
+    printf("\n\n\n Matches: %d\n",);
+  }
+
+  return;
+}
+
+/**
+ *  Automatically generate input buffers for r_search.
+ */
+void next_buffer(unsigned char *buffer, int *buffer_current, int buffer_pos_max) {
+  int i;
+  for (i = *buffer_current; i >= 0; i--) {
+    if (buffer[i] < buffer_pos_max) {
+      buffer[i]++;
+      break;
+    }
+    if (buffer[i] == buffer_pos_max) {
+      buffer[i] = 0;
+    }
+
+    if (i == 0 && buffer[i] == 0) {
+      (*buffer_current)++;
     }
   }
-  fts_close(ftsp);
+}
 
-  printf("\n\n\n Matches: %d", g_hit_counter);
-
-  return ret_val;
+void copy_buffer(unsigned char *src, unsigned char *dst, int size) {
+  int i;
+  for (i = 0; i <= size; i++) {
+    dst[i] = src[i];
+  }
 }
 
 /**
  * Print Hex Buffer helper method.
  */
-void printHexBuffer (unsigned char *buffer, size_t len) {
+void printHexBuffer (unsigned char *buffer, int len) {
+  //printf("\nPrint Buffer: size=%d, first=%X\n", len, buffer[0]);
   int i;
-  for (i = 0; i < len; i++) {
+  for (i = 0; i <= len; i++) {
     printf("%.2X ", buffer[i]);
   }
   return;
