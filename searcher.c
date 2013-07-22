@@ -366,3 +366,18 @@ void printHexBuffer (unsigned char *buffer, int len) {
   }
   return;
 }
+
+/**
+ * Takes an uninitialized char * and initializes it to the correct length given an arbitrary buffer.
+ *   ** = pointer to pointer - this is for immutables like strings.
+ *  CALL
+ *    char * buf;
+ *    convert_hex_pattern_to_string(&buf, hex_pattern);
+ */
+convert_hex_pattern_to_string (char **storage_buffer, unsigned char * hex_pattern) {
+  *storage_buffer = (char *)malloc(sizeof(hex_pattern) + sizeof(hex_pattern)-1);
+  int i = 0;
+  for (; i < sizeof(hex_pattern) - 2; i++) {
+    sprintf(*storage_buffer + strlen(*storage_buffer), "%2X ", hex_pattern[i]);
+  }
+}
